@@ -8,6 +8,7 @@ type LoaderProps = {
   speed?: number;
   color?: string;
   className?: string;
+  label?: string;
 };
 
 export function Loader({
@@ -16,9 +17,10 @@ export function Loader({
   speed = 2,
   color = "var(--primary)",
   className,
+  label = "Loading",
 }: LoaderProps) {
   return (
-    <div className={className} role="status" aria-label={"Loading"}>
+    <div className={className} role="status" aria-live="polite" aria-label={label}>
       <Spinner
         style={{
           width: size,
