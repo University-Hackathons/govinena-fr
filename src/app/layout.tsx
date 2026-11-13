@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { siteConfig } from "@/config/site";
-import "./globals.css";
 import { AppProviders } from "@/components/providers/app-providers";
+import "./globals.css";
 
 export const metadata: Metadata = {
   applicationName: siteConfig.name,
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen antialiased">
+      <body>
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

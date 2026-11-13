@@ -1,0 +1,143 @@
+"use client";
+
+import { useTheme } from "next-themes";
+import { useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+
+const subscribeToMount = () => () => {};
+
+export const ThemeToggle = ({
+  className,
+  label,
+}: {
+  className?: string;
+  label?: string;
+}) => {
+  const { setTheme, resolvedTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    subscribeToMount,
+    () => true,
+    () => false,
+  );
+
+  return (
+    <Button
+      type="button"
+      disabled={!mounted}
+      variant="ghost"
+      onClick={(e) => {
+        const newTheme = resolvedTheme === "dark" ? "light" : "dark";
+
+        if (
+          !document.startViewTransition ||
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ) {
+          setTheme(newTheme);
+          return;
+        }
+
+        const bounds = e.currentTarget.getBoundingClientRect();
+        const clientX =
+          e.detail === 0 ? bounds.left + bounds.width / 2 : e.clientX;
+        const clientY =
+          e.detail === 0 ? bounds.top + bounds.height / 2 : e.clientY;
+        const endRadius = Math.hypot(
+          Math.max(clientX, innerWidth - clientX),
+          Math.max(clientY, innerHeight - clientY),
+        );
+
+        const transition = document.startViewTransition(() => {
+          flushSync(() => setTheme(newTheme));
+        });
+
+        transition.ready
+          .then(() => {
+            document.documentElement.animate(
+              {
+                clipPath: [
+                  `circle(0px at ${clientX}px ${clientY}px)`,
+                  `circle(${endRadius}px at ${clientX}px ${clientY}px)`,
+                ],
+              },
+              {
+                duration: 500,
+                easing: "ease-in-out",
+                pseudoElement: "::view-transition-new(root)",
+              },
+            );
+          })
+          .catch(() => {
+            // Rapid toggles can skip an in-flight view transition.
+          });
+      }}
+      className={cn(
+        "inline-flex text-foreground cursor-pointer items-center justify-center whitespace-nowrap text-sm font-semibold disabled:pointer-events-none disabled:opacity-50 hover:bg-muted h-11 w-11 relative rounded-full transition-all active:scale-90 sm:h-10 sm:w-10 sm:border-none sm:bg-transparent sm:shadow-none sm:backdrop-blur-none bg-transparent shadow-none backdrop-blur-none",
+        className,
+      )}
+    >
+      <div
+        className="absolute inset-0 flex items-center justify-center transition-all duration-300"
+        style={{
+          opacity: mounted && resolvedTheme === "dark" ? 1 : 0,
+          transform:
+            mounted && resolvedTheme === "dark"
+              ? "scale(1) rotate(0deg)"
+              : "scale(0.5) rotate(90deg)",
+        }}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="lucide lucide-moon"
+          aria-hidden="true"
+        >
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+        </svg>
+      </div>
+      <div
+        className="absolute inset-0 flex items-center justify-center transition-all duration-300"
+        style={{
+          opacity: mounted && resolvedTheme === "light" ? 1 : 0,
+          transform:
+            mounted && resolvedTheme === "light"
+              ? "scale(1) rotate(0deg)"
+              : "scale(0.5) rotate(-90deg)",
+        }}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="lucide lucide-sun"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2"></path>
+          <path d="M12 20v2"></path>
+          <path d="m4.93 4.93 1.41 1.41"></path>
+          <path d="m17.66 17.66 1.41 1.41"></path>
+          <path d="M2 12h2"></path>
+          <path d="M20 12h2"></path>
+          <path d="m6.34 17.66-1.41 1.41"></path>
+          <path d="m19.07 4.93-1.41 1.41"></path>
+        </svg>
+      </div>
+      <span className="sr-only">{label ?? "Toggle theme"}</span>
+    </Button>
+  );
+};

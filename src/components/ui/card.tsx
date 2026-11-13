@@ -1,13 +1,18 @@
 import * as React from "react";
-import { cn } from "cn";
+
+import { cn } from "@/lib/utils";
 
 function Card({
+  as: Component = "div",
   className,
   size = "default",
   ...props
-}: React.ComponentProps<"div"> & { size?: "default" | "sm" }) {
+}: React.HTMLAttributes<HTMLElement> & {
+  size?: "default" | "sm";
+  as?: "div" | "section" | "article" | "aside" | "p" | "li";
+}) {
   return (
-    <div
+    <Component
       data-slot="card"
       data-size={size}
       className={cn(

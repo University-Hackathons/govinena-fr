@@ -42,6 +42,8 @@ npm start
 | date-fns | Ready for future date formatting; deliberately no invented freshness timestamps |
 | sonner | Theme-aware toast host, ready for actual user actions |
 
+The imported UI also uses `@base-ui/react`, `motion`, `gsap`, and `react-day-picker`. Existing Radix components remain supported alongside Base UI.
+
 Next.js 16.4.5, React 19.3.0, Tailwind 4.3.4, TypeScript 6.0.3, and ESLint 9.39.5 remain compatible. TypeScript is pinned below 6.1 because the current TypeScript ESLint parser does not support newer versions; the React/import/accessibility ESLint plugins currently require ESLint 9 or earlier. No peer-dependency overrides are used. `package-lock.json` records exact versions for all dependencies.
 
 shadcn was initialized with its official CLI using the Radix Nova preset:
@@ -51,7 +53,7 @@ npx --yes shadcn@latest init --base radix --preset nova --yes
 npx --yes shadcn@latest add button card input label select table badge dialog tabs dropdown-menu skeleton alert sheet separator sonner --yes
 ```
 
-Generated components live in `src/components/ui`; configure future additions through `components.json`. The `shadcn` package is a development dependency because its CSS is compiled during builds. System fonts keep builds independent of external font services.
+Components live in `src/components/ui`; configure future additions through `components.json`, now set to Base Nova to match the imported Base UI components. The commands above record the original scaffold. The `shadcn` package is a development dependency because its CSS is compiled during builds. System fonts keep builds independent of external font services.
 
 ## Source organization
 
@@ -93,7 +95,7 @@ Routes remain thin Server Component entry points with page-specific metadata. Sh
 
 `next-themes` sets the root `class`, defaults to the operating system preference, and persists the user's choice. A CSS-driven icon prevents theme-dependent hydration mismatches. `suppressHydrationWarning` applies only to the root element modified by the theme library.
 
-Semantic CSS variables cover surfaces, text, inputs, borders, focus rings, charts, and sidebar colors. Main text, muted text, primary-button text, primary links, accent text, and destructive text pairs exceed 4.5:1 contrast in both themes. Navigation has active-page semantics; drawers and menus use Radix keyboard/focus handling. The chart provides a screen-reader table and labels its values as synthetic. Reduced-motion preferences are respected.
+Semantic CSS variables cover surfaces, text, inputs, borders, focus rings, charts, and sidebar colors. The imported palette, typography, spacing, scrollbar styling, and transition effects are retained in `globals.css`; semantic aliases connect the imported landing styles to these tokens. Navigation has active-page semantics; drawers and menus use Radix keyboard/focus handling. The chart provides a screen-reader table and labels its values as synthetic. Reduced-motion preferences are respected.
 
 ## Query and service boundaries
 
@@ -114,7 +116,7 @@ The dashboard's service lives under its feature and returns local fixtures. Its 
 
 Lint, TypeScript, the production build, and API error tests pass. The dependency tree is consistent. Browser checks cover desktop and mobile navigation, theme switching, and client-side rendering with local data. All six workspace routes build successfully.
 
-The production dependency audit reports zero vulnerabilities. The full audit currently reports 21 development-tool findings (2 low, 19 moderate), inherited through ESLint and the shadcn CLI (`minimatch` and `deepmerge`). Suggested force fixes downgrade major tooling versions and were not applied. Recheck these when updating the toolchain.
+The production dependency audit reports zero vulnerabilities. The previous foundation audit reported development-tool findings inherited through ESLint and the shadcn CLI (`minimatch` and `deepmerge`); run `npm audit` to inspect the current tree after dependency changes. Suggested force fixes downgrade major tooling versions and were not applied. Recheck these when updating the toolchain.
 
 ## Recommended next steps
 
@@ -132,3 +134,11 @@ The production dependency audit reports zero vulnerabilities. The full audit cur
 - [TanStack Query App Router guidance](https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr)
 - [next-themes](https://github.com/pacocoursey/next-themes)
 - [Axios error handling](https://axios-http.com/docs/handling_errors)
+
+## Imported UI integration
+
+The landing sections remain under `src/components/landing`, with English preview copy in `copy.ts`. The new `ThemeProvider.tsx`, animated `ThemeToggle.tsx`, `app-sidebar.tsx`, `ui/sidebar.tsx`, `reui/timeline.tsx`, and additional UI files are retained. `components/layout/workspace-shell.tsx` wires the imported sidebar into `(workspace)/layout.tsx`; the existing AppShell export delegates to it for compatibility.
+
+The borrowed project's cart, roles, session endpoints, and translation modules are not present in GoviNena. `context/AuthContext.tsx` therefore exposes an explicitly disconnected preview session without network requests or a fabricated login. `/auth` explains this status. Language menus retain their styling and show English plus disabled Sinhala/Tamil options marked as coming soon. Authentication and full translations should be implemented deliberately when their contracts are defined.
+
+The root provider composition includes the imported theme provider, Query client, preview auth context, and one Sonner host. The cached footer is compatible with Next.js Cache Components. View transitions retain the circular reveal, respect reduced motion, handle keyboard activation, and tolerate interrupted animations.
