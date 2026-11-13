@@ -15,7 +15,7 @@ type Option = { value: string; label: string; active: boolean };
 export type CatalogSelectorProps = {
   id: string; name?: string; label: string; value: string | null;
   onValueChange: (value: string | null) => void;
-  disabled?: boolean; required?: boolean;
+  disabled?: boolean; required?: boolean; error?: string;
 };
 
 type SelectorState = {
@@ -25,19 +25,20 @@ type SelectorState = {
 };
 
 function CatalogSelector({ kind, props, state }: { kind: CatalogKind; props: CatalogSelectorProps; state: SelectorState }) {
-  const { id, name, label, value, onValueChange, disabled = false, required = false } = props;
+  const { id, name, label, value, onValueChange, disabled = false, required = false, error: validationError } = props;
   const { options, pending, error, retry, q, setQ, page, setPage, total } = state;
   const missing = !!value && !options.some((row) => row.value === value);
   const selection = useCatalogSelection(kind, value, missing);
   const items = missing ? [...options, selection.data ?? { value: value!, label: selection.isPending ? "Loading selection…" : "Unavailable selection", active: false }] : options;
   return <div className="space-y-3">
     <Label htmlFor={`${id}-search`}>Search {kind}</Label>
-    <Input id={`${id}-search`} type="search" value={q} maxLength={100} disabled={disabled} onChange={(event) => { setQ(event.target.value); setPage(1); }} placeholder={`Search ${kind}`} />
+    <Input id={`${id}-search`} type="search" onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }} value={q} maxLength={100} disabled={disabled} onChange={(event) => { setQ(event.target.value); setPage(1); }} placeholder={`Search ${kind}`} />
     <Label htmlFor={id}>{label}{required ? " *" : ""}</Label>
     <Select name={name} value={value} onValueChange={onValueChange} disabled={disabled || pending || !!error} required={required} items={items}>
-      <SelectTrigger id={id} aria-describedby={`${id}-status`}><SelectValue placeholder={`Select ${kind === "crops" ? "a crop" : "a market"}`} /></SelectTrigger>
+      <SelectTrigger id={id} aria-invalid={!!validationError} aria-describedby={`${id}-status${validationError ? ` ${id}-error` : ""}`}><SelectValue placeholder={`Select ${kind === "crops" ? "a crop" : "a market"}`} /></SelectTrigger>
       <SelectContent>{items.map((row) => <SelectItem key={row.value} value={row.value} disabled={!row.active}>{row.label}</SelectItem>)}</SelectContent>
     </Select>
+    {validationError && <p id={`${id}-error`} role="alert" className="text-sm text-destructive">{validationError}</p>}
     <div id={`${id}-status`}>
       {pending ? <LoadingState label={`Loading ${kind}…`} className="min-h-16" /> : error ? <ErrorState title={`Could not load ${kind}`} description={error.message} onRetry={retry} /> : !options.length ? <p role="status" className="text-sm text-muted-foreground">No {kind} found. Try a different search.</p> : null}
       {missing && selection.isError && <ErrorState title="Selected item is unavailable" description="Choose another item or clear the selection." onRetry={() => { void selection.refetch(); }} />}
