@@ -1,5 +1,7 @@
 # AgriMarket — GoviNena frontend
 
+Feature 02 adds farmer profiles and preferences. See [FARMER_PROFILE.md](FARMER_PROFILE.md) for API contracts, migration steps, file changes, verification, and current environment limitations.
+
 Reusable frontend foundation for an agentic AI-based Farmer Market Decision Support System for Sri Lanka. The public introduction remains at `/`. The application workspace has `/dashboard`, `/produce`, `/markets`, `/recommendations`, `/monitoring`, and `/settings`.
 
 All workspace information is explicitly labeled as a preview. The dashboard uses local fixtures, not API fallbacks. There are no real agricultural prices, recommendations, or notifications. Account operations now use Supabase Auth and the FastAPI backend; see [authentication setup and verification](AUTHENTICATION.md).

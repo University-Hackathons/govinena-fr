@@ -173,7 +173,7 @@ function NavUser({
                 className="cursor-pointer"
               >
                 <User className="mr-2 h-4 w-4" />
-                Settings
+                Profile
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
@@ -225,7 +225,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <NavUser
           user={navUser}
-          profileHref="/settings"
+          profileHref="/profile"
           notificationsHref="/monitoring"
         />
       </SidebarFooter>

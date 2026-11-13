@@ -5,9 +5,11 @@ import { z } from "zod";
 import { createAuthClient } from "./server";
 const profileSchema = z.object({ id: z.uuid(), email: z.email(), created_at: z.string() });
 export type Profile = z.infer<typeof profileSchema>;
-export async function backendRequest(path: "/users/me" | "/auth/logout", method = "GET") {
+export async function backendRequest(path: "/users/me" | "/auth/logout" | "/farmer/profile", method = "GET", body?: string) {
     const auth = await createAuthClient();
     const { data: { user }, error } = await auth.auth.getUser();
+    if (error && (!error.status || error.status === 429 || error.status >= 500))
+        throw new Error("Authentication service is temporarily unavailable.");
     if (error || !user)
         return null;
     // getSession is used only to forward a token after getUser has verified identity.
@@ -19,7 +21,8 @@ export async function backendRequest(path: "/users/me" | "/auth/logout", method 
         throw new Error("API_BASE_URL is not configured.");
     return fetch(`${origin.replace(/\/$/, "")}/api/v1${path}`, {
         method,
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${session.access_token}`, ...(body ? { "Content-Type": "application/json" } : {}) },
+        body,
         cache: "no-store",
         signal: AbortSignal.timeout(15000),
     });
