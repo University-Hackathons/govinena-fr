@@ -2,7 +2,7 @@
 
 Reusable frontend foundation for an agentic AI-based Farmer Market Decision Support System for Sri Lanka. The public introduction remains at `/`. The application workspace has `/dashboard`, `/produce`, `/markets`, `/recommendations`, `/monitoring`, and `/settings`.
 
-All workspace information is explicitly labeled as a preview. The dashboard uses local fixtures, not API fallbacks. There are no real prices, recommendations, notifications, account operations, or backend requests.
+All workspace information is explicitly labeled as a preview. The dashboard uses local fixtures, not API fallbacks. There are no real agricultural prices, recommendations, or notifications. Account operations now use Supabase Auth and the FastAPI backend; see [authentication setup and verification](AUTHENTICATION.md).
 
 ## Local development
 
@@ -10,13 +10,13 @@ Use Node.js 24 LTS and npm. The app supports Node.js >=20.9; the lightweight Typ
 
 ```bash
 cd /home/nipun/Desktop/innovaX/govinena-fr
-npm ci
+npm install  # Refresh the lockfile for the new auth packages; see AUTHENTICATION.md
 # If .env.local is absent after cloning:
 cp -n .env.example .env.local
 npm run dev
 ```
 
-Open http://localhost:3000/dashboard. Stop the server with Ctrl+C.
+Configure Supabase and start the migrated backend as described in [AUTHENTICATION.md](AUTHENTICATION.md), then open http://localhost:3000/dashboard. Stop the server with Ctrl+C.
 
 ```bash
 npm run lint
@@ -35,7 +35,7 @@ npm start
 | shadcn/ui, Radix UI, class-variance-authority, cn, tw-animate-css | Owned component source, accessible primitives, variants, class composition, and animations |
 | lucide-react | Consistent application icons |
 | next-themes | Persisted light, dark, and system appearance |
-| react-hook-form, zod, @hookform/resolvers | Ready for typed forms with schema validation; no business form is implemented |
+| react-hook-form, zod, @hookform/resolvers | Ready for typed forms with schema validation; auth forms validate with Zod in Server Actions |
 | axios | Shared HTTP client with timeouts and safe errors |
 | @tanstack/react-query | Query cache, async loading states, cancellation-ready service boundaries |
 | recharts | Responsive visualization; demonstrated using a synthetic index |
@@ -44,7 +44,7 @@ npm start
 
 The imported UI also uses `@base-ui/react`, `motion`, `gsap`, and `react-day-picker`. Existing Radix components remain supported alongside Base UI.
 
-Next.js 16.4.5, React 19.3.0, Tailwind 4.3.4, TypeScript 6.0.3, and ESLint 9.39.5 remain compatible. TypeScript is pinned below 6.1 because the current TypeScript ESLint parser does not support newer versions; the React/import/accessibility ESLint plugins currently require ESLint 9 or earlier. No peer-dependency overrides are used. `package-lock.json` records exact versions for all dependencies.
+Next.js 16.4.5, React 19.3.0, Tailwind 4.3.4, TypeScript 6.0.3, and ESLint 9.39.5 remain compatible. TypeScript is pinned below 6.1 because the current TypeScript ESLint parser does not support newer versions; the React/import/accessibility ESLint plugins currently require ESLint 9 or earlier. No peer-dependency overrides are used. `package-lock.json` records the foundation dependencies; it must be refreshed with `npm install` for the new auth packages once registry access is available (see `AUTHENTICATION.md`).
 
 shadcn was initialized with its official CLI using the Radix Nova preset:
 
@@ -106,15 +106,15 @@ The dashboard's service lives under its feature and returns local fixtures. Its 
 ## Axios and environment configuration
 
 - `.env.example` is the committed template; `.env.local` is ignored.
-- `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000` is a placeholder backend origin. No backend is needed for the preview.
+- `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000` is a placeholder backend origin. Authenticated workspace access now requires the configured backend.
 - `src/lib/api.ts` validates the public HTTP(S) base URL when a request is made, applies a 15-second timeout, and accepts JSON responses.
 - Missing or invalid configuration fails explicitly instead of accidentally using the frontend origin.
 - `src/lib/api-error.ts` normalizes errors into configuration, network, timeout, HTTP, or unknown failures, preserving status and safe retry classification. Raw response bodies, headers, and request details are not exposed to users. Axios cancellation errors pass through unchanged.
-- `NEXT_PUBLIC_` values are browser-visible and inlined at build time. Never place API secrets in them. Keep privileged requests and secrets on the server. No authentication storage or token injection is implemented.
+- `NEXT_PUBLIC_` values are browser-visible and inlined at build time. Never place API secrets in them. Keep privileged requests and secrets on the server. Authentication uses server-only Supabase SSR clients with HttpOnly cookies; authenticated backend forwarding is in `src/lib/auth/profile.ts`.
 
 ## Verification and known limitations
 
-Lint, TypeScript, the production build, and API error tests pass. The dependency tree is consistent. Browser checks cover desktop and mobile navigation, theme switching, and client-side rendering with local data. All six workspace routes build successfully.
+The original foundation passed lint, TypeScript, build, and API error checks. Current authentication validation outcomes and installation blockers are recorded in [AUTHENTICATION.md](AUTHENTICATION.md). Browser checks cover desktop and mobile navigation, theme switching, and client-side rendering with local data. All six workspace routes build successfully.
 
 The production dependency audit reports zero vulnerabilities. The previous foundation audit reported development-tool findings inherited through ESLint and the shadcn CLI (`minimatch` and `deepmerge`); run `npm audit` to inspect the current tree after dependency changes. Suggested force fixes downgrade major tooling versions and were not applied. Recheck these when updating the toolchain.
 
@@ -123,7 +123,7 @@ The production dependency audit reports zero vulnerabilities. The previous found
 1. Agree on backend response schemas, market identifiers, units, currencies, and timestamp semantics.
 2. Define Sinhala/Tamil/English localization and low-bandwidth/accessibility requirements.
 3. Implement one produce or market workflow with Zod schemas, React Hook Form, feature services, and Query hooks.
-4. Add authentication and authorization once the backend contract is established; clear user-specific query caches on sign-out.
+4. Keep future per-user query data scoped to the verified identity. Authentication and authorization are implemented in Feature 01.
 5. Replace the synthetic chart with source-attributed observations, confidence/freshness indicators, and honest empty/error states.
 6. Add end-to-end coverage for the first real workflow, then expand recommendations and monitoring.
 
@@ -139,6 +139,6 @@ The production dependency audit reports zero vulnerabilities. The previous found
 
 The landing sections remain under `src/components/landing`, with English preview copy in `copy.ts`. The new `ThemeProvider.tsx`, animated `ThemeToggle.tsx`, `app-sidebar.tsx`, `ui/sidebar.tsx`, `reui/timeline.tsx`, and additional UI files are retained. `components/layout/workspace-shell.tsx` wires the imported sidebar into `(workspace)/layout.tsx`; the existing AppShell export delegates to it for compatibility.
 
-The borrowed project's cart, roles, session endpoints, and translation modules are not present in GoviNena. `context/AuthContext.tsx` therefore exposes an explicitly disconnected preview session without network requests or a fabricated login. `/auth` explains this status. Language menus retain their styling and show English plus disabled Sinhala/Tamil options marked as coming soon. Authentication and full translations should be implemented deliberately when their contracts are defined.
+The borrowed project's cart, roles, session endpoints, and translation modules are not present in GoviNena. `context/AuthContext.tsx` now receives a verified provider-linked profile from the server workspace layout; `/auth` redirects to `/login`. Language menus retain their styling and show English plus disabled Sinhala/Tamil options marked as coming soon. Full translations remain future work.
 
-The root provider composition includes the imported theme provider, Query client, preview auth context, and one Sonner host. The cached footer is compatible with Next.js Cache Components. View transitions retain the circular reveal, respect reduced motion, handle keyboard activation, and tolerate interrupted animations.
+The root provider composition includes the imported theme provider, Query client, verified workspace auth context, and one Sonner host. The cached footer is compatible with Next.js Cache Components. View transitions retain the circular reveal, respect reduced motion, handle keyboard activation, and tolerate interrupted animations.

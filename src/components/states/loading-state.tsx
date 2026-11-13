@@ -1,21 +1,17 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import Loader from "@/components/Loader";
+import { cn } from "@/lib/utils";
 
 export function LoadingState({
   label = "Loading workspace…",
+  className,
 }: {
   label?: string;
+  className?: string;
 }) {
   return (
-    <div role="status" aria-live="polite" className="space-y-6">
-      <span className="sr-only">{label}</span>
-      <Skeleton className="h-9 w-52" />
-      <Skeleton className="h-5 w-full max-w-md" />
-      <div className="grid gap-4 sm:grid-cols-3">
-        {[0, 1, 2].map((item) => (
-          <Skeleton key={item} className="h-32 rounded-xl" />
-        ))}
-      </div>
-      <Skeleton className="h-64 rounded-xl" />
+    <div className={cn("flex min-h-40 flex-col items-center justify-center gap-3 p-6", className)}>
+      <Loader label={label} />
+      <p aria-hidden="true" className="text-sm text-muted-foreground">{label}</p>
     </div>
   );
 }

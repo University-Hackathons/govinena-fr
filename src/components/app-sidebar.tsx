@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { LogoutButton } from "@/features/auth/components/logout-button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Bell, ChevronsUpDown, User } from "lucide-react";
 
@@ -184,6 +185,8 @@ function NavUser({
                 Monitoring
               </DropdownMenuItem>
             </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <LogoutButton />
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
@@ -208,7 +211,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     },
   ];
   const navUser = user
-    ? { name: user.name, email: user.email ?? user.phone ?? "" }
+    ? { name: user.name, email: user.email }
     : { name: "Preview workspace", email: "No account connected" };
 
   return (
