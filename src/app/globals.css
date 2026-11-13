@@ -1,0 +1,151 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: #d6e7b7;
+  color: #183b2e;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 5px;
+}
+
+:root {
+  --background: #f8faf6;
+  --foreground: #19382a;
+  --card: #ffffff;
+  --card-foreground: #19382a;
+  --popover: #ffffff;
+  --popover-foreground: #19382a;
+  --primary: #24613d;
+  --primary-foreground: #ffffff;
+  --secondary: #e6eedf;
+  --secondary-foreground: #25462f;
+  --muted: #edf2e9;
+  --muted-foreground: #53644e;
+  --accent: #e6eedf;
+  --accent-foreground: #25462f;
+  --destructive: #b42318;
+  --border: #d4dfcf;
+  --input: #8d9f86;
+  --ring: #387749;
+  --chart-1: #24613d;
+  --chart-2: #98650e;
+  --chart-3: #397f84;
+  --chart-4: #7254a3;
+  --chart-5: #b65132;
+  --radius: 0.75rem;
+  --sidebar: #eef3e9;
+  --sidebar-foreground: #19382a;
+  --sidebar-primary: #24613d;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e0ead8;
+  --sidebar-accent-foreground: #25462f;
+  --sidebar-border: #d4dfcf;
+  --sidebar-ring: #387749;
+}
+
+.dark {
+  --background: #101c16;
+  --foreground: #edf3e7;
+  --card: #17271d;
+  --card-foreground: #edf3e7;
+  --popover: #17271d;
+  --popover-foreground: #edf3e7;
+  --primary: #a3d58a;
+  --primary-foreground: #152b1c;
+  --secondary: #293d2d;
+  --secondary-foreground: #e2edda;
+  --muted: #223429;
+  --muted-foreground: #b2c2a9;
+  --accent: #293d2d;
+  --accent-foreground: #e2edda;
+  --destructive: #ff9b90;
+  --border: #3d5140;
+  --input: #698161;
+  --ring: #a3d58a;
+  --chart-1: #a3d58a;
+  --chart-2: #e6c16d;
+  --chart-3: #82c6cc;
+  --chart-4: #bba2e0;
+  --chart-5: #f09b7a;
+  --sidebar: #15231a;
+  --sidebar-foreground: #edf3e7;
+  --sidebar-primary: #a3d58a;
+  --sidebar-primary-foreground: #152b1c;
+  --sidebar-accent: #293d2d;
+  --sidebar-accent-foreground: #e2edda;
+  --sidebar-border: #3d5140;
+  --sidebar-ring: #a3d58a;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
