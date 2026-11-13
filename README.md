@@ -1,5 +1,7 @@
 # AgriMarket — GoviNena frontend
 
+Feature 03 implements the crop catalog and wholesale market directory at `/markets`, including market details and reusable selectors. See [CATALOG.md](CATALOG.md) for setup, source handling, file changes and verification.
+
 Feature 02 adds farmer profiles and preferences. See [FARMER_PROFILE.md](FARMER_PROFILE.md) for API contracts, migration steps, file changes, verification, and current environment limitations.
 
 Reusable frontend foundation for an agentic AI-based Farmer Market Decision Support System for Sri Lanka. The public introduction remains at `/`. The application workspace has `/dashboard`, `/produce`, `/markets`, `/recommendations`, `/monitoring`, and `/settings`.
