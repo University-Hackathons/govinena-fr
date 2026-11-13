@@ -24,7 +24,7 @@ export async function proxy(request: NextRequest) {
     });
     // Always verify; never authorize from getSession or cookie presence.
     const { data: { user }, error } = await auth.auth.getUser();
-    const protectedPage = ["/dashboard", "/produce", "/markets", "/recommendations", "/monitoring", "/settings"]
+    const protectedPage = ["/dashboard", "/produce", "/markets", "/recommendations", "/monitoring", "/settings", "/profile", "/onboarding"]
         .some((path) => request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(`${path}/`));
     if (protectedPage) {
         let status = 401;
@@ -40,6 +40,21 @@ export async function proxy(request: NextRequest) {
                         cache: "no-store", signal: AbortSignal.timeout(15000),
                     });
                     status = result.status;
+                    // First-time users finish the core profile before entering workspace pages.
+                    // Profile/onboarding themselves stay reachable to avoid redirect loops.
+                    if (status === 200 && !["/profile", "/onboarding"].some((path) => request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(`${path}/`))) {
+                        const farmer = await fetch(`${origin.replace(/\/$/, "")}/api/v1/farmer/profile`, {
+                            headers: { Authorization: `Bearer ${session.access_token}` },
+                            cache: "no-store", signal: AbortSignal.timeout(15000),
+                        });
+                        if (farmer.status === 404) {
+                            const onboarding = NextResponse.redirect(new URL("/onboarding", request.url));
+                            response.cookies.getAll().forEach((cookie) => onboarding.cookies.set(cookie));
+                            onboarding.headers.set("Cache-Control", "private, no-store");
+                            return onboarding;
+                        }
+                        if (!farmer.ok) status = farmer.status;
+                    }
                 }
                 catch {
                     status = 503;
@@ -64,5 +79,5 @@ export async function proxy(request: NextRequest) {
     return response;
 }
 export const config = {
-    matcher: ["/dashboard/:path*", "/produce/:path*", "/markets/:path*", "/recommendations/:path*", "/monitoring/:path*", "/settings/:path*", "/login", "/register", "/forgot-password", "/reset-password", "/auth/:path*", "/api/users/me"],
+    matcher: ["/dashboard/:path*", "/produce/:path*", "/markets/:path*", "/recommendations/:path*", "/monitoring/:path*", "/settings/:path*", "/profile/:path*", "/onboarding/:path*", "/login", "/register", "/forgot-password", "/reset-password", "/auth/:path*", "/api/users/me", "/api/farmer/profile"],
 };

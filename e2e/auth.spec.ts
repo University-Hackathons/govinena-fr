@@ -15,7 +15,7 @@ test("login, refresh, guest redirects, and logout", async ({ page, context }) =>
     await expect(page.getByRole("alert")).toContainText("incorrect");
     await page.getByLabel("Password", { exact: true }).fill(process.env.E2E_PASSWORD!);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page).toHaveURL(/\/(dashboard|onboarding)$/);
     const profile = await page.request.get("/api/users/me");
     expect(profile.status()).toBe(200);
     expect((await profile.json()).email).toBe(process.env.E2E_EMAIL);
@@ -24,9 +24,9 @@ test("login, refresh, guest redirects, and logout", async ({ page, context }) =>
     expect(cookies.every((cookie) => cookie.httpOnly && cookie.sameSite === "Lax")).toBe(true);
     expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => /supabase|auth-token/i.test(key)))).toEqual([]);
     await page.reload();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page).toHaveURL(/\/(dashboard|onboarding)$/);
     await page.goto("/register");
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page).toHaveURL(/\/(dashboard|onboarding)$/);
     await page.getByRole("button").filter({ hasText: process.env.E2E_EMAIL! }).click();
     await page.getByRole("button", { name: "Sign out", exact: true }).click();
     await expect(page).toHaveURL(/\/login$/);

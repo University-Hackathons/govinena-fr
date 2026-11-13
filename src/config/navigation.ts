@@ -5,6 +5,7 @@ import {
   Settings,
   Sprout,
   Store,
+  UserRound,
 } from "lucide-react";
 
 export const navigation = [
@@ -17,5 +18,6 @@ export const navigation = [
     icon: ChartNoAxesCombined,
   },
   { href: "/monitoring", label: "Monitoring", icon: Activity },
+  { href: "/profile", label: "Profile", icon: UserRound },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
