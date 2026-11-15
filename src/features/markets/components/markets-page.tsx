@@ -67,6 +67,7 @@ function CropDirectory() {
 export function MarketsPage() {
   return <div className="mx-auto max-w-7xl space-y-8">
     <header className="space-y-2"><h1 className="text-2xl font-semibold tracking-tight">Markets</h1><p className="max-w-3xl text-sm leading-6 text-muted-foreground">Explore Sri Lankan wholesale markets and crops. This reference directory includes source information; confirm trading arrangements directly before travelling.</p></header>
+    <Button asChild><Link href="/markets/prices">View market prices</Link></Button>
     <MarketDirectory /><CropDirectory />
   </div>;
 }

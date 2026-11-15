@@ -5,8 +5,8 @@ import { z } from "zod";
 import { createAuthClient } from "./server";
 const profileSchema = z.object({ id: z.uuid(), email: z.email(), created_at: z.string() });
 export type Profile = z.infer<typeof profileSchema>;
-export type BackendPath = "/users/me" | "/auth/logout" | "/farmer/profile" | `/crops${string}` | `/markets${string}` | `/produce${string}`;
-export async function backendRequest(path: BackendPath, method = "GET", body?: string) {
+export type BackendPath = "/users/me" | "/auth/logout" | "/farmer/profile" | `/crops${string}` | `/markets${string}` | `/produce${string}` | `/prices${string}`;
+export async function backendRequest(path: BackendPath, method = "GET", body?: string | ArrayBuffer, contentType = "application/json", timeout = 15000) {
     const auth = await createAuthClient();
     const { data: { user }, error } = await auth.auth.getUser();
     if (error && (!error.status || error.status === 429 || error.status >= 500))
@@ -22,10 +22,10 @@ export async function backendRequest(path: BackendPath, method = "GET", body?: s
         throw new Error("API_BASE_URL is not configured.");
     return fetch(`${origin.replace(/\/$/, "")}/api/v1${path}`, {
         method,
-        headers: { Authorization: `Bearer ${session.access_token}`, ...(body ? { "Content-Type": "application/json" } : {}) },
+        headers: { Authorization: `Bearer ${session.access_token}`, ...(body ? { "Content-Type": contentType } : {}) },
         body,
         cache: "no-store",
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(timeout),
     });
 }
 export const getProfile = cache(async (): Promise<Profile | null> => {
