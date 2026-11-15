@@ -1,5 +1,7 @@
 # AgriMarket — GoviNena frontend
 
+Feature 05 adds `/markets/prices`, source-backed price tables, history charts, freshness and an admin-only verified CSV import. See [MARKET_PRICES.md](MARKET_PRICES.md) for setup, audit behavior, files changed and verification.
+
 Feature 03 implements the crop catalog and wholesale market directory at `/markets`, including market details and reusable selectors. See [CATALOG.md](CATALOG.md) for setup, source handling, file changes and verification.
 
 Feature 02 adds farmer profiles and preferences. See [FARMER_PROFILE.md](FARMER_PROFILE.md) for API contracts, migration steps, file changes, verification, and current environment limitations.
