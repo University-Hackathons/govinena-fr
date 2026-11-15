@@ -21,6 +21,7 @@ export function ErrorState({
         <p>{description}</p>
         {onRetry && (
           <Button
+            type="button"
             variant="outline"
             className="mt-3 text-foreground"
             onClick={onRetry}

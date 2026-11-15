@@ -1,5 +1,7 @@
 # AgriMarket — GoviNena frontend
 
+Feature 06 adds transportation estimates, manual/quote fallback, cost breakdowns and recorded assumptions inside produce details. See [LOGISTICS.md](LOGISTICS.md) for setup, files changed, checks and manual verification.
+
 Feature 05 adds `/markets/prices`, source-backed price tables, history charts, freshness and an admin-only verified CSV import. See [MARKET_PRICES.md](MARKET_PRICES.md) for setup, audit behavior, files changed and verification.
 
 Feature 03 implements the crop catalog and wholesale market directory at `/markets`, including market details and reusable selectors. See [CATALOG.md](CATALOG.md) for setup, source handling, file changes and verification.
