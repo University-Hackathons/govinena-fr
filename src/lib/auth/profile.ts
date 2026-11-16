@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createAuthClient } from "./server";
 const profileSchema = z.object({ id: z.uuid(), email: z.email(), created_at: z.string() });
 export type Profile = z.infer<typeof profileSchema>;
-export type BackendPath = "/users/me" | "/auth/logout" | "/farmer/profile" | `/crops${string}` | `/markets${string}` | `/produce${string}` | `/prices${string}` | `/logistics${string}` | `/crop-risk${string}`;
+export type BackendPath = "/users/me" | "/auth/logout" | "/farmer/profile" | `/crops${string}` | `/markets${string}` | `/produce${string}` | `/prices${string}` | `/logistics${string}` | `/crop-risk${string}` | `/comparisons${string}`;
 export async function backendRequest(path: BackendPath, method = "GET", body?: string | ArrayBuffer, contentType = "application/json", timeout = 15000) {
     const auth = await createAuthClient();
     const { data: { user }, error } = await auth.auth.getUser();
