@@ -1,3 +1,4 @@
+import { MarketComparison } from "@/features/comparisons/components/market-comparison";
 import { CropRiskAssessment } from "@/features/crop-risk/components/crop-risk-assessment";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -25,6 +26,7 @@ async function BatchDetail({ params }: { params: Promise<{ id: string }> }) {
     <Card><CardHeader><CardTitle>Notes</CardTitle></CardHeader><CardContent><p className="whitespace-pre-wrap break-words text-sm">{batch.notes ?? "No notes added."}</p></CardContent></Card>
     <CropRiskAssessment batch={batch} />
     <TransportEstimator batch={batch} profile={profile} />
+    <MarketComparison key={batch.id} batch={batch} profile={profile} />
     <Card><CardHeader><CardTitle>Market recommendations</CardTitle></CardHeader><CardContent className="space-y-3"><p className="text-sm text-muted-foreground">Recommendations will be available in a later feature.</p><Button disabled>Find a market — coming later</Button></CardContent></Card>
   </article>;
 }
