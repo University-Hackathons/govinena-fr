@@ -27,7 +27,7 @@ async function BatchDetail({ params }: { params: Promise<{ id: string }> }) {
     <CropRiskAssessment batch={batch} />
     <TransportEstimator batch={batch} profile={profile} />
     <MarketComparison key={batch.id} batch={batch} profile={profile} />
-    <Card><CardHeader><CardTitle>Market recommendations</CardTitle></CardHeader><CardContent className="space-y-3"><p className="text-sm text-muted-foreground">Recommendations will be available in a later feature.</p><Button disabled>Find a market — coming later</Button></CardContent></Card>
+    <Card><CardHeader><CardTitle>Market recommendations</CardTitle></CardHeader><CardContent className="space-y-3"><p className="text-sm text-muted-foreground">Use verified prices, transport inputs and crop-risk rules to generate an explained recommendation. No sales or payments are performed.</p>{batch.status === "available" ? <Button asChild><Link href={`/recommendations/new?batch=${batch.id}`}>Generate Recommendation</Link></Button> : <p className="text-sm text-muted-foreground">Recommendations require an available batch.</p>}</CardContent></Card>
   </article>;
 }
 export default function Page({ params }: { params: Promise<{ id: string }> }) { return <Suspense fallback={<LoadingState label="Loading produce batch…" />}><BatchDetail params={params} /></Suspense>; }
