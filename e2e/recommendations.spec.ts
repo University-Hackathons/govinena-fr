@@ -1,0 +1,65 @@
+import { test, expect, type Page } from "@playwright/test";
+import { toSriLankaInput } from "../src/features/produce/schema";
+async function choose(page: Page, label: string, value: string | RegExp) { await page.getByRole("combobox", { name: label, exact: true }).click(); await page.getByRole("option", { name: value, exact: typeof value === "string" }).click(); }
+test("mobile recommendation, visible tools, acceptance, modified constraints and durable resume", async ({ page, baseURL }) => {
+  test.skip(!process.env.E2E_FARMER_EMAIL || !process.env.E2E_FARMER_PASSWORD || process.env.E2E_COMPARISON_FRESH_PRICES !== "1", "Needs disposable farmer credentials, migrated backend in mock mode, catalog and fresh verified ungraded wholesale tomato prices at Dambulla.");
+  test.setTimeout(180000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/login");
+  await page.getByLabel("Email", { exact: true }).fill(process.env.E2E_FARMER_EMAIL!);
+  await page.getByLabel("Password", { exact: true }).fill(process.env.E2E_FARMER_PASSWORD!);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/(dashboard|onboarding)$/);
+  if (new URL(page.url()).pathname === "/onboarding") {
+    await page.getByLabel("Full name *", { exact: true }).fill("Agent Test Farmer");
+    await choose(page, "District *", "Kandy");
+    await page.getByLabel("Town or village *", { exact: true }).fill("Gampola");
+    await page.getByRole("button", { name: "Skip optional fields", exact: true }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+  }
+  await page.goto("/produce/new"); await choose(page, "Crop *", /^Tomato ·/);
+  await page.getByLabel("Quantity in kg *", { exact: true }).fill("100");
+  const deadline = Date.now()+86400000;
+  await page.getByLabel("Harvest date and time *", { exact: true }).fill(toSriLankaInput(new Date(Date.now()-3600000).toISOString()));
+  await page.getByLabel("Latest acceptable sale date and time *", { exact: true }).fill(toSriLankaInput(new Date(deadline).toISOString()));
+  await page.getByRole("button", { name: "Add produce batch", exact: true }).click();
+  await expect(page).toHaveURL(/\/produce\/[0-9a-f-]+$/);
+  const batchID = new URL(page.url()).pathname.split("/").pop()!;
+  await page.getByRole("link", { name: "Generate Recommendation", exact: true }).click();
+  await choose(page, "Candidate market 1 *", "Dambulla Dedicated Economic Centre");
+  await page.getByLabel("Comparison vehicle capacity (kg)", { exact: true }).fill("1000");
+  await page.getByRole("checkbox", { name: "Explicitly assume no quantity loss for this scenario" }).click();
+  await page.getByLabel("Known outbound distance (km) · market 1", { exact: true }).fill("10");
+  await page.getByLabel("Known outbound duration (minutes) · market 1", { exact: true }).fill("60");
+  await page.getByLabel("Whole-batch transport quote (LKR) · market 1", { exact: true }).fill("700");
+  await page.getByLabel("Quote description · market 1", { exact: true }).fill("All-in quote for test batch");
+  await page.getByRole("button", { name: "Generate Recommendation", exact: true }).click();
+  await expect(page).toHaveURL(/\/recommendations\/[0-9a-f-]+$/);
+  await expect(page.getByText("Recommendation ready", { exact: true })).toBeVisible({ timeout: 60000 });
+  await expect(page.getByText("Calculate and rank net proceeds · success", { exact: true })).toBeVisible();
+  const runID = new URL(page.url()).pathname.split("/").pop()!;
+  const run = await (await page.request.get(`/api/agent/runs/${runID}`)).json();
+  expect(run.recommendation.expected_net_proceeds_lkr).toBe(run.comparison.eligible[0].expected_net_proceeds_lkr);
+  await page.getByRole("button", { name: "Accept recommendation", exact: true }).click();
+  await expect(page.getByText(/Approval: accepted/)).toBeVisible(); await page.reload();
+  await expect(page.getByText(/Approval: accepted/)).toBeVisible();
+  await page.getByRole("link", { name: "Modify Constraints", exact: true }).click();
+  await page.getByLabel("Expected final arrival (Sri Lanka time) · market 1", { exact: true }).fill(toSriLankaInput(new Date(deadline+3600000).toISOString()));
+  await page.getByRole("button", { name: "Generate Recommendation", exact: true }).click();
+  await expect(page.getByText("Your input is needed", { exact: true })).toBeVisible({ timeout: 60000 });
+  await page.getByRole("link", { name: "Modify Constraints", exact: true }).click();
+  await page.getByLabel("Expected final arrival (Sri Lanka time) · market 1", { exact: true }).fill(toSriLankaInput(new Date(Date.now()+3600000).toISOString()));
+  await page.getByRole("button", { name: "Update and Resume", exact: true }).click();
+  await expect(page.getByText("Recommendation ready", { exact: true })).toBeVisible({ timeout: 60000 });
+  await page.getByRole("button", { name: "Reject recommendation", exact: true }).click();
+  await expect(page.getByText(/Approval: rejected/)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect((await page.request.delete(`/api/produce/${batchID}`, { headers: { Origin: new URL(baseURL!).origin } })).status()).toBe(204);
+});
+test("agent APIs reject anonymous and cross-origin requests and unsupported actions", async ({ request, baseURL }) => {
+  const id = "00000000-0000-4000-8000-000000000001";
+  expect((await request.post("/api/agent/recommendations", { headers: { Origin: new URL(baseURL!).origin }, data: { produce_batch_id: id } })).status()).toBe(401);
+  expect((await request.post("/api/agent/recommendations", { headers: { Origin: "https://untrusted.example" }, data: {} })).status()).toBe(403);
+  expect((await request.get(`/api/agent/runs/${id}`)).status()).toBe(401);
+  expect((await request.post(`/api/agent/runs/${id}/sell`, { headers: { Origin: new URL(baseURL!).origin }, data: {} })).status()).toBe(404);
+});

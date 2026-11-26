@@ -3,9 +3,10 @@ import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { toast } from "sonner";
+import { runSchema } from "@/features/recommendations/schema";
 import { useAuth } from "@/context/AuthContext";
 import type { FarmerProfile } from "@/features/farmer-profile/schema";
-import { type ProduceBatch, formatBatchDate, sriLankaInputToISO } from "@/features/produce/schema";
+import { type ProduceBatch, formatBatchDate, sriLankaInputToISO, toSriLankaInput } from "@/features/produce/schema";
 import { defaults, logisticsFormSchema, logisticsPayload, type LogisticsForm } from "@/features/logistics/schema";
 import { storageOptions } from "@/features/crop-risk/schema";
 import { MarketSelector } from "@/features/catalog/components/catalog-selectors";
@@ -23,7 +24,7 @@ import { additionalFeeSchema, comparisonSchema, uniqueCandidates, formatComparis
 
 type Candidate = { market_id: string; manual_distance_km: string; manual_duration_minutes: string; manual_return_distance_km: string; known_quote_lkr: string; quote_note: string; arrival: string; fee: string };
 const blank = (): Candidate => ({ market_id: "", manual_distance_km: "", manual_duration_minutes: "", manual_return_distance_km: "", known_quote_lkr: "", quote_note: "", arrival: "", fee: "0" });
-function Results({ result }: { result: ComparisonResult }) {
+export function ComparisonResults({ result }: { result: ComparisonResult }) {
   return <section aria-label="Market comparison results" className="space-y-5">
     <header className="space-y-2"><h3 className="text-lg font-semibold">Ranked observed-price scenarios</h3><p className="text-sm text-muted-foreground">Historical assessment: {formatBatchDate(result.assessed_at)} (Sri Lanka time). Prices must be no older than {result.price_max_age_hours} hours at assessment and arrival. Grade: {result.quality || "Unspecified"} · {result.price_type} · LKR/kg.</p><p className="text-sm">These are scenarios using recorded observations. Actual future prices and sales are unknown. Recalculate when inputs or data change.</p></header>
     {!result.eligible.length && <EmptyState title="No eligible markets" description="Review the exclusions below. Add missing transport, arrival or loss assumptions, or wait for suitable verified price data." />}
@@ -46,12 +47,31 @@ function Results({ result }: { result: ComparisonResult }) {
   </section>;
 }
 
-export function MarketComparison({ batch, profile }: { batch: ProduceBatch; profile: FarmerProfile | null }) {
+function constraintDefaults(initial: Record<string, unknown> | undefined, profile: FarmerProfile | null) {
+  const object = (value: unknown): Record<string, unknown> => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  const root = object(initial?.transport), overrides = Array.isArray(initial?.market_overrides) ? initial.market_overrides.map(object) : [];
+  const first = Object.keys(object(overrides[0]?.transport)).length ? object(overrides[0]?.transport) : root;
+  const common = defaults(profile), tariff = object(first.tariff);
+  for (const name of ["vehicle_capacity_kg", "pricing_basis", "transport_mode"] as const) if (first[name] !== null && first[name] !== undefined) Object.assign(common, { [name]: String(first[name]) });
+  common.allow_multiple_trips = first.allow_multiple_trips === true;
+  for (const name of ["base_charge_lkr", "rate_per_km_lkr", "loading_lkr", "unloading_lkr", "toll_lkr", "market_handling_lkr"] as const) if (tariff[name] !== null && tariff[name] !== undefined) common[name] = String(tariff[name]);
+  const ids = Array.isArray(initial?.market_ids) ? initial.market_ids.filter((id): id is string => typeof id === "string") : overrides.map((row) => String(row.market_id));
+  const candidates = ids.map((id) => {
+    const override = overrides.find((row) => row.market_id === id), transport = Object.keys(object(override?.transport)).length ? object(override?.transport) : root;
+    const row = blank(); row.market_id = id;
+    for (const name of ["manual_distance_km", "manual_duration_minutes", "manual_return_distance_km", "known_quote_lkr", "quote_note"] as const) if (transport[name] !== null && transport[name] !== undefined) row[name] = String(transport[name]);
+    if (typeof override?.expected_arrival_at === "string") row.arrival = toSriLankaInput(override.expected_arrival_at);
+    row.fee = override?.additional_market_fee_lkr !== undefined ? String(override.additional_market_fee_lkr) : "0";
+    return row;
+  });
+  return { common, candidates: candidates.length ? candidates : [blank()] };
+}
+export function MarketComparison({ batch, profile, agentMode = false, initialConstraints, agentAction }: { batch: ProduceBatch; profile: FarmerProfile | null; agentMode?: boolean; initialConstraints?: Record<string, unknown>; agentAction?: { runId: string; revision: number } }) {
   const { user } = useAuth(); const router = useRouter(); const pathname = usePathname(); const params = useSearchParams();
-  const snapshotID = params.get("comparison");
-  const [common, setCommon] = useState(() => defaults(profile));
-  const [candidates, setCandidates] = useState<Candidate[]>([blank()]);
-  const [storage, setStorage] = useState("unknown"), [priceType, setPriceType] = useState("wholesale"), [noLoss, setNoLoss] = useState(false);
+  const snapshotID = agentMode ? null : params.get("comparison");
+  const [common, setCommon] = useState(() => constraintDefaults(initialConstraints, profile).common);
+  const [candidates, setCandidates] = useState<Candidate[]>(() => constraintDefaults(initialConstraints, profile).candidates);
+  const [storage, setStorage] = useState(String(initialConstraints?.storage_condition ?? "unknown")), [priceType, setPriceType] = useState(String(initialConstraints?.price_type ?? "wholesale")), [noLoss, setNoLoss] = useState(initialConstraints?.assume_no_loss === true);
   const [latest, setLatest] = useState<ComparisonResult | null>(null), [busy, setBusy] = useState(false), [failure, setFailure] = useState("");
   const [changed, setChanged] = useState(false);
   const saved = useQuery({ queryKey: ["comparison-snapshot", user.id, batch.id, snapshotID], enabled: !!snapshotID, retry: false, queryFn: async ({ signal }) => {
@@ -69,9 +89,9 @@ export function MarketComparison({ batch, profile }: { batch: ProduceBatch; prof
   async function compare(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setFailure(""); setBusy(true);
     try {
-      if (!uniqueCandidates(candidates.map((row) => row.market_id))) throw new Error("Select 1–20 different candidate markets.");
+      if (!uniqueCandidates(candidates.map((row) => row.market_id)) || (agentMode && candidates.length > 5)) throw new Error(`Select 1–${agentMode ? 5 : 20} different candidate markets.`);
       const overrides = candidates.map((row, index) => {
-        const parsed = logisticsFormSchema.safeParse({ ...common, ...row, route_mode: row.manual_distance_km ? "manual" : "automatic", manual_return_distance_km: common.pricing_basis === "round_trip" ? row.manual_return_distance_km : "", manual_return_duration_minutes: "", assume_equal_return: false });
+        const parsed = logisticsFormSchema.safeParse({ ...common, ...row, route_mode: row.manual_distance_km || (agentMode && row.known_quote_lkr && row.arrival) ? "manual" : "automatic", manual_return_distance_km: common.pricing_basis === "round_trip" ? row.manual_return_distance_km : "", manual_return_duration_minutes: "", assume_equal_return: false });
         if (!parsed.success) throw new Error(`Market ${index + 1}: ${parsed.error.issues[0].message}`);
         if (!additionalFeeSchema.safeParse(row.fee).success) throw new Error(`Market ${index + 1}: enter valid additional fees with at most two decimals.`);
         const payload = logisticsPayload(batch.id, parsed.data);
@@ -79,6 +99,12 @@ export function MarketComparison({ batch, profile }: { batch: ProduceBatch; prof
         void _batchID; void _marketID;
         return { market_id: row.market_id, transport, additional_market_fee_lkr: row.fee || "0", expected_arrival_at: row.arrival ? sriLankaInputToISO(row.arrival) : null };
       });
+      if (agentMode) {
+        const constraints = { produce_batch_id: batch.id, market_ids: candidates.map((row) => row.market_id), price_type: priceType, storage_condition: storage, assume_no_loss: noLoss, market_overrides: overrides };
+        const response = await fetch(agentAction ? `/api/agent/runs/${agentAction.runId}/resume` : "/api/agent/recommendations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(agentAction ? { revision: agentAction.revision, constraints } : constraints) });
+        if (!response.ok) throw new Error(response.status === 409 ? "This run or batch changed. Reload or create a new recommendation." : "The recommendation could not be queued. Check your constraints and retry.");
+        const run = runSchema.parse(await response.json()); toast.success("Recommendation run queued."); router.push(`/recommendations/${run.id}`); return;
+      }
       const response = await fetch("/api/comparisons", { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", body: JSON.stringify({ produce_batch_id: batch.id, market_ids: candidates.map((row) => row.market_id), price_type: priceType, storage_condition: storage, assume_no_loss: noLoss, market_overrides: overrides }) });
       if (!response.ok) throw new Error(response.status === 401 ? "Your session expired. Sign in again." : response.status === 422 ? "Check the selected markets, capacity, dates, distances and quotes." : response.status === 404 ? "This batch is unavailable." : "The comparison could not be completed. Your inputs remain here; please retry.");
       const data = comparisonSchema.parse(await response.json()); setLatest(data); setChanged(false);
@@ -92,7 +118,7 @@ export function MarketComparison({ batch, profile }: { batch: ProduceBatch; prof
     } finally { setBusy(false); }
   }
   const closed = ["sold", "archived"].includes(batch.status);
-  return <Card id="market-comparison"><CardHeader><CardTitle>Compare Markets</CardTitle><CardDescription>Compare expected net proceeds using recorded prices and explicit transport and crop assumptions. This is deterministic arithmetic, not a forecast.</CardDescription></CardHeader><CardContent className="space-y-6">
+  return <Card id="market-comparison"><CardHeader><CardTitle>{agentMode ? "Recommendation constraints" : "Compare Markets"}</CardTitle><CardDescription>Compare expected net proceeds using recorded prices and explicit transport and crop assumptions. This is deterministic arithmetic, not a forecast.</CardDescription></CardHeader><CardContent className="space-y-6">
     {closed ? <p className="text-sm text-muted-foreground">This batch is sold or archived. Saved comparisons remain historical records.</p> : <form onSubmit={compare} aria-label="Market comparison settings" className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">{choice("Comparison price type", "comparison-type", priceType, ["wholesale", "retail", "farmgate"].map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1) })), setPriceType)}{choice("Storage for comparison", "comparison-storage", storage, [...storageOptions], setStorage)}</div>
       <div className="space-y-2"><div className="flex items-start gap-3"><Checkbox id="comparison-no-loss" checked={noLoss} disabled={busy} onCheckedChange={(checked) => { setNoLoss(checked); setChanged(true); }} /><Label htmlFor="comparison-no-loss" className="leading-6">Explicitly assume no quantity loss for this scenario</Label></div><p className="text-xs text-muted-foreground">Otherwise an applicable crop/storage loss rule is required. This assumption never extends your deadline.</p></div>
@@ -102,12 +128,12 @@ export function MarketComparison({ batch, profile }: { batch: ProduceBatch; prof
         <div className="space-y-2"><Label htmlFor={`comparison-${index}-quote`}>Quote description · market {index + 1}</Label><Input id={`comparison-${index}-quote`} maxLength={300} value={row.quote_note} onChange={(event) => updateRow(index, "quote_note", event.target.value)} disabled={busy} /></div><div className="space-y-2"><Label htmlFor={`comparison-${index}-arrival`}>Expected final arrival (Sri Lanka time) · market {index + 1}</Label><Input id={`comparison-${index}-arrival`} type="datetime-local" value={row.arrival} onChange={(event) => updateRow(index, "arrival", event.target.value)} disabled={busy} /></div></div>
         <p className="text-xs text-muted-foreground">Leave distance blank to try configured routing. A quote without route duration needs an explicit arrival. Enter only additional fees not already covered by transport; zero assumes no extra fees.</p>{candidates.length > 1 && <Button type="button" variant="outline" disabled={busy} onClick={() => { setCandidates((old) => old.filter((_, i) => i !== index)); setChanged(true); }}>Remove candidate {index + 1}</Button>}
       </fieldset>)}
-      <Button type="button" variant="outline" disabled={busy || candidates.length >= 20} onClick={() => { setCandidates((old) => [...old, blank()]); setChanged(true); }}>Add candidate market</Button>
-      {failure && <p role="alert" className="text-sm text-destructive">{failure}</p>}<div><Button disabled={busy} type="submit">{busy ? "Comparing markets…" : "Compare Markets"}</Button></div>
+      <Button type="button" variant="outline" disabled={busy || candidates.length >= (agentMode ? 5 : 20)} onClick={() => { setCandidates((old) => [...old, blank()]); setChanged(true); }}>Add candidate market</Button>
+      {failure && <p role="alert" className="text-sm text-destructive">{failure}</p>}<div><Button disabled={busy} type="submit">{busy ? (agentMode ? "Queuing recommendation…" : "Comparing markets…") : agentMode ? (agentAction ? "Update and Resume" : "Generate Recommendation") : "Compare Markets"}</Button></div>
     </form>}
-    {busy && <LoadingState label="Comparing selected markets…" />}
+    {busy && <LoadingState label={agentMode ? "Queuing verified agent workflow…" : "Comparing selected markets…"} />}
     {snapshotID && saved.isPending && !latest && <LoadingState label="Loading saved comparison…" />}
     {saved.isError && !latest && <ErrorState title="Saved comparison unavailable" description="Recalculate or retry loading this historical snapshot." onRetry={() => { void saved.refetch(); }} />}
-    {result && <>{changed && <p role="status" className="text-sm font-medium">Inputs changed. Recalculate to update the comparison below.</p>}<Results result={result} /></>}
+    {result && <>{changed && <p role="status" className="text-sm font-medium">Inputs changed. Recalculate to update the comparison below.</p>}<ComparisonResults result={result} /></>}
   </CardContent></Card>;
 }
